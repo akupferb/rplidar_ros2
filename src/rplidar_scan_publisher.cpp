@@ -77,9 +77,9 @@ class RPLidarScanPublisher : public rclcpp::Node
         this->get_parameter_or<std::string>("channel_type", channel_type, "serial");
         this->get_parameter_or<std::string>("tcp_ip", tcp_ip, "192.168.0.7"); 
         this->get_parameter_or<int>("tcp_port", tcp_port, 20108);
-        this->get_parameter_or<std::string>("serial_port", serial_port, "/dev/ttyUSB0"); 
+        this->get_parameter_or<std::string>("serial_port", serial_port, "/dev/ttyUSB3"); 
         this->get_parameter_or<int>("serial_baudrate", serial_baudrate, 115200/*256000*/);//ros run for A1 A2, change to 256000 if A3
-        this->get_parameter_or<std::string>("frame_id", frame_id, "laser_frame");
+        this->get_parameter_or<std::string>("frame_id", frame_id, "base_scan");
         this->get_parameter_or<bool>("inverted", inverted, false);
         this->get_parameter_or<bool>("angle_compensate", angle_compensate, false);
         this->get_parameter_or<std::string>("scan_mode", scan_mode, std::string());
@@ -189,6 +189,9 @@ class RPLidarScanPublisher : public rclcpp::Node
                   float max_distance,
                   std::string frame_id)
     {
+        auto i_limit_min = nearbyint((double)node_count * 3.0 / 16.0);
+        auto i_limit_max = nearbyint((double)node_count * 13.0 / 16.0);
+
         static int scan_count = 0;
         auto scan_msg = std::make_shared<sensor_msgs::msg::LaserScan>();
 
@@ -218,7 +221,7 @@ class RPLidarScanPublisher : public rclcpp::Node
         if (!reverse_data) {
             for (size_t i = 0; i < node_count; i++) {
                 float read_value = (float) nodes[i].dist_mm_q2/4.0f/1000;
-                if (read_value == 0.0)
+                if (read_value == 0.0 || ((double)i < i_limit_max && (double)i > i_limit_min))
                     scan_msg->ranges[i] = std::numeric_limits<float>::infinity();
                 else
                     scan_msg->ranges[i] = read_value;
@@ -227,7 +230,7 @@ class RPLidarScanPublisher : public rclcpp::Node
         } else {
             for (size_t i = 0; i < node_count; i++) {
                 float read_value = (float)nodes[i].dist_mm_q2/4.0f/1000;
-                if (read_value == 0.0)
+                if (read_value == 0.0 || ((double)i < i_limit_max && (double)i > i_limit_min))
                     scan_msg->ranges[node_count-1-i] = std::numeric_limits<float>::infinity();
                 else
                     scan_msg->ranges[node_count-1-i] = read_value;
