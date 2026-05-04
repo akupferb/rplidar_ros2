@@ -242,6 +242,9 @@ class RPlidarNode : public rclcpp::Node
         scan_msg->header.frame_id = frame_id;
         scan_count++;
 
+        auto i_limit_min = nearbyint((double)node_count * 3.0 / 16.0);
+        auto i_limit_max = nearbyint((double)node_count * 13.0 / 16.0);
+
         bool reversed = (angle_max > angle_min);
         if ( reversed ) {
             scan_msg->angle_min =  M_PI - angle_max;
@@ -275,7 +278,7 @@ class RPlidarNode : public rclcpp::Node
                     apply_index = apply_index + scan_midpoint;
             }
 
-            if (read_value == 0.0)
+            if (read_value == 0.0 || ((double)apply_index < i_limit_max && (double)apply_index > i_limit_min))
                 scan_msg->ranges[apply_index] = std::numeric_limits<float>::infinity();
             else
                 scan_msg->ranges[apply_index] = read_value;
